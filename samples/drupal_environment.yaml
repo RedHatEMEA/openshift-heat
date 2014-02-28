@@ -1,0 +1,17 @@
+parameters:
+  # UUID for public network (find with neutron net-list)
+  public_network: 
+
+  # UUID for tenant private network (find with neutron net-list)
+  private_network: 
+
+  # UUID for tenant private subnet (find with neutron subnet-list)
+  private_subnet: 
+
+  # MariaDB IaaS instance
+  flavor: 
+  image: 
+  key_name: 
+
+  # Drupal application
+  openshift_domain: 

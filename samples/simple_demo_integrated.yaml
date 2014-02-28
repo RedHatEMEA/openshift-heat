@@ -1,0 +1,21 @@
+heat_template_version: 2013-05-23
+
+description: Creates a demo python application in OpenShift.
+
+parameters:
+  domain:
+    type: string
+    description: Application domain in OpenShift
+
+resources:
+  demo:
+    type: OSE::OpenShift
+    properties:
+      verify: False
+      domain: { get_param: domain }
+      cartridges: [ python-2.7 ]
+
+outputs:
+  app_url:
+    value: { get_attr: [ demo, app_url ] }
+    description: application URL

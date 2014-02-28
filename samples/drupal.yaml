@@ -1,0 +1,107 @@
+HeatTemplateFormatVersion: 2012-12-12
+
+Description: |
+  Creates a two-tier application with MariaDB running on Fedora on OpenStack
+  IaaS and Drupal running in OpenShift PaaS.
+
+Parameters:
+  public_network:
+    Type: String
+    Description: UUID for public network (find with neutron net-list)
+  private_network:
+    Type: String
+    Description: UUID for private network (find with neutron net-list)
+  private_subnet:
+    Type: String
+    Description: UUID for tenant private subnet (find with neutron subnet-list)
+  flavor:
+    Type: String
+    Description: MariaDB IaaS instance flavor
+  image:
+    Type: String
+    Description: MariaDB IaaS instance image
+  key_name:
+    Type: String
+    Description: MariaDB IaaS instance keypair
+  mariadb_username:
+    Type: String
+    Description: MariaDB IaaS instance database username
+    Default: admin
+  mariadb_password:
+    Type: String
+    Description: MariaDB IaaS instance database password
+    Default: password
+  openshift_domain:
+    Type: String
+    Description: Drupal application domain in OpenShift
+
+Resources:
+  database:
+    Type: OS::Nova::Server
+    Properties:
+      image: { Ref: image }
+      flavor: { Ref: flavor }
+      key_name: { Ref: key_name }
+      networks:
+        - port: { Ref: database_port }
+      user_data:
+        Fn::Replace:
+          - $mariadb_username: { Ref: mariadb_username }
+            $mariadb_password: { Ref: mariadb_password }
+            $wait_handle: { Ref: wait_handle }
+          - |
+            #!/bin/bash
+            yum -y install mariadb-server
+            service mariadb start
+            echo 'GRANT ALL ON *.* TO "$mariadb_username"@"%" IDENTIFIED BY "$mariadb_password"; FLUSH PRIVILEGES;' | mysql
+            cfn-signal '$wait_handle'
+
+  database_port:
+    Type: OS::Neutron::Port
+    Properties:
+      network_id: { Ref: private_network }
+      fixed_ips:
+        - subnet_id: { Ref: private_subnet }
+
+  database_ip:
+    Type: OS::Neutron::FloatingIP
+    Properties:
+      floating_network_id: { Ref: public_network }
+      port_id: { Ref: database_port }
+
+  # NB: WaitCondition stuff will be simplified in Icehouse
+
+  wait_handle:
+    Type: AWS::CloudFormation::WaitConditionHandle
+
+  wait_condition:
+    Type: AWS::CloudFormation::WaitCondition
+    DependsOn: database
+    Properties:
+      Handle: { Ref: wait_handle }
+      Timeout: 600
+
+  drupal:
+    Type: OSE::OpenShift
+    DependsOn: wait_condition
+    Properties:
+      verify: False
+      domain: { Ref: openshift_domain }
+      cartridges: [ php-5.3 ]
+      initial_git_url: "https://github.com/openshift/drupal-quickstart.git"
+      environment_variables:
+        OPENSHIFT_MYSQL_DB_HOST: { "Fn::GetAtt": [ database_ip, floating_ip_address ] }
+        OPENSHIFT_MYSQL_DB_PORT: 3306
+        OPENSHIFT_MYSQL_DB_USERNAME: { Ref: mariadb_username }
+        OPENSHIFT_MYSQL_DB_PASSWORD: { Ref: mariadb_password }
+        OPENSHIFT_MYSQL_DB_URL:
+          Fn::Replace:
+            - $mariadb_username: { Ref: mariadb_username }
+              $mariadb_password: { Ref: mariadb_password }
+              $floating_ip_address: { "Fn::GetAtt": [ database_ip, floating_ip_address ] }
+            - mysql://$mariadb_username:$mariadb_password@$floating_ip_address:3306/
+
+Outputs:
+  app_url:
+    Value: { "Fn::GetAtt": [drupal, app_url] }
+    Description: Drupal application URL

@@ -1,0 +1,25 @@
+heat_template_version: 2013-05-23
+
+description: Creates a scaled JBoss "kitchensink" demo application in OpenShift.
+
+parameters:
+  domain:
+    type: string
+    description: Application domain in OpenShift
+
+resources:
+  demo:
+    type: OSE::OpenShift
+    properties:
+      verify: False
+      domain: { get_param: domain }
+      name: kitchensink
+      cartridges: [ jbosseap-6, postgresql-9.2 ]
+      scale: True
+      initial_git_url: "git://github.com/openshift/kitchensink-example.git"
+      environment_variables: { HEAT: 1 }
+
+outputs:
+  app_url:
+    value: { get_attr: [ demo, app_url ] }
+    description: application URL
