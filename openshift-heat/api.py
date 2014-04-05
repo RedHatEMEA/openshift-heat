@@ -25,15 +25,9 @@ class API(object):
         self.verify = verify
 
     def _call(self, method, url, data = None):
-        if type(self.auth) == tuple:
-            r = self.s.request(method, self.url + url, data = data,
-                               headers = { "Content-Type": "application/json" },
-                               auth = self.auth, verify = self.verify)
-        else:
-            r = self.s.request(method, self.url + url, data = data,
-                               headers = { "Content-Type": "application/json",
-                                           "X-Auth-Token": self.auth },
-                               verify = self.verify)
+        r = self.s.request(method, self.url + url, data = data,
+                           headers = { "Content-Type": "application/json" },
+                           auth = self.auth, verify = self.verify)
 
         if r.status_code / 100 != 2:
             raise Exception("Unexpected HTTP status code %u" % r.status_code)

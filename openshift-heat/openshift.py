@@ -16,6 +16,8 @@
 
 from api import API
 from heat.engine import properties, resource
+from oslo.config import cfg
+import auth
 
 class OpenShift(resource.Resource):
     properties_schema = {
@@ -39,10 +41,19 @@ class OpenShift(resource.Resource):
     }
 
     def _auth(self):
-        if self.properties["username"] and self.properties["password"]:
-            return (self.properties["username"], self.properties["password"])
+        ks = self.keystone().client_v2
+        username = ks.tokens.authenticate(token = self.context.auth_token).user["username"]
+
+        if cfg.CONF.plugin_openshift.auth_mechanism == "password":
+            return auth.HTTPBasicAuth(self.properties["username"], self.properties["password"])
+        elif cfg.CONF.plugin_openshift.auth_mechanism == "keystone":
+            return auth.HTTPKeystoneAuth(self.context.auth_token)
+        elif cfg.CONF.plugin_openshift.auth_mechanism == "gssapi":
+            return auth.HTTPGSSAPIAuth(cfg.CONF.plugin_openshift.keytab, username)
+        elif cfg.CONF.plugin_openshift.auth_mechanism == "gssproxy":
+            return auth.HTTPGSSProxyAuth(username)
         else:
-            return self.context.auth_token
+            raise Exception("invalid authentication mechanism configured")
 
     def _resolve_attribute(self, name):
         api = API(self._url(), self._auth(), self.properties["verify"])
@@ -91,3 +102,15 @@ class OpenShift(resource.Resource):
 
 def resource_mapping():
     return {"OSE::OpenShift": OpenShift}
+
+
+config_group = cfg.OptGroup("plugin_openshift")
+config_opts = [
+    cfg.StrOpt("auth_mechanism",
+               choices = ["password", "keystone", "gssapi", "gssproxy"],
+               default = "password"),
+    cfg.StrOpt("keytab")
+]
+
+cfg.CONF.register_group(config_group)
+cfg.CONF.register_opts(config_opts, group = config_group)
