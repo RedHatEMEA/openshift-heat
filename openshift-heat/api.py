@@ -44,4 +44,9 @@ class API(object):
         return self._call("GET", "/application/%s" % id)
 
     def application_delete(self, id):
-        self._call("DELETE", "/application/%s" % id)
+        return self._call("DELETE", "/application/%s" % id)
+
+    def application_deploy(self, id, **kwargs):
+        return self._call("POST", "/application/%s/deployments" % id,
+                          json.dumps(kwargs))
+    

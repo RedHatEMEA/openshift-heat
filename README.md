@@ -222,6 +222,9 @@ The OSE::OpenShift resource provides the following properties:
   Additional environment variables to set within the OpenShift
   application.
 
+- **artifact_url**: *string, optional*.  The location of a tar.gz
+  artifact to deploy into the newly created OpenShift application.
+
 The OSE::OpenShift resource provides the following attribute:
 
 - **app_url**: *string*.  The URL of the application created by

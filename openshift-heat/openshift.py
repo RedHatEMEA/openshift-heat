@@ -16,6 +16,7 @@
 
 from api import API
 from heat.engine import properties, resource
+from heat.openstack.common import excutils
 from oslo.config import cfg
 import auth
 
@@ -34,6 +35,7 @@ class OpenShift(resource.Resource):
                                              "initial_git_url"),
         "environment_variables": properties.Schema(properties.MAP,
                                                    "environment_variables"),
+        "artifact_url": properties.Schema(properties.STRING, "artifact_url"),
     }
 
     attributes_schema = {
@@ -86,6 +88,13 @@ class OpenShift(resource.Resource):
             d["environment_variables"] = [{"name": x, "value": self.properties["environment_variables"][x]} for x in self.properties["environment_variables"]]
 
         id = api.application_create(self.properties["domain"], **d)
+
+        if self.properties["artifact_url"]:
+            try:
+                api.application_deploy(id, artifact_url = self.properties["artifact_url"])
+            except:
+                with excutils.save_and_reraise_exception():
+                    api.application_delete(id)
 
         self.resource_id_set(id)
         return self.resource_id
