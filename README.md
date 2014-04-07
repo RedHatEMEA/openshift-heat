@@ -262,3 +262,16 @@ Samples
   run:
 
   `(keystone_demo)# heat stack-create -f drupal.yaml -e drupal_environment.yaml test_stack`
+
+- *samples/ticketmonster.yaml* creates a two-tier application with
+  PostgreSQL running on OpenStack IaaS and Ticketmonster (JBoss EAP
+  application) running in OpenShift PaaS.  Again, configuration steps
+  1-3 need to have been followed.
+
+  Note that this example uses Heat WaitConditions; in OpenStack Havana
+  a user with admin privilege is required to deploy this template.
+
+  Complete all the missing parameters in
+  ticketmonster_environment.yaml then run:
+
+  `(keystone_demo)# heat stack-create -f ticketmonster.yaml -e ticketmonster_environment.yaml test_stack`

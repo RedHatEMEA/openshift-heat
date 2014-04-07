@@ -1,0 +1,18 @@
+parameters:
+  # UUID for public network (find with neutron net-list)
+  public_network: 
+
+  # UUID for tenant private network (find with neutron net-list)
+  private_network: 
+
+  # UUID for tenant private subnet (find with neutron subnet-list)
+  private_subnet: 
+
+  # PostgreSQL IaaS instance
+  flavor: 
+  image: 
+  key_name: 
+
+  # Ticketmonster application
+  openshift_domain: test
+  openshift_name: ticketmonster

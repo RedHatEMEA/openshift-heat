@@ -1,0 +1,126 @@
+HeatTemplateFormatVersion: 2012-12-12
+
+Description: |
+  Creates a two-tier application with PostgreSQL running on OpenStack
+  IaaS and Ticketmonster (JBoss EAP application) running in OpenShift
+  PaaS.
+
+Parameters:
+  public_network:
+    Type: String
+    Description: UUID for public network (find with neutron net-list)
+  private_network:
+    Type: String
+    Description: UUID for private network (find with neutron net-list)
+  private_subnet:
+    Type: String
+    Description: UUID for tenant private subnet (find with neutron subnet-list)
+  flavor:
+    Type: String
+    Description: PostgreSQL IaaS instance flavor
+  image:
+    Type: String
+    Description: PostgreSQL IaaS instance image
+  key_name:
+    Type: String
+    Description: PostgreSQL IaaS instance keypair
+  postgresql_username:
+    Type: String
+    Description: PostgreSQL IaaS instance database username
+    Default: admin
+  postgresql_password:
+    Type: String
+    Description: PostgreSQL IaaS instance database password
+    Default: password
+  openshift_domain:
+    Type: String
+    Description: Ticketmonster application domain in OpenShift
+  openshift_name:
+    Type: String
+    Description: Ticketmonster application name in OpenShift
+
+Resources:
+  database:
+    Type: OS::Nova::Server
+    Properties:
+      image: { Ref: image }
+      flavor: { Ref: flavor }
+      key_name: { Ref: key_name }
+      networks:
+        - port: { Ref: database_port }
+      user_data:
+        Fn::Replace:
+          - $openshift_name: { Ref: openshift_name }
+            $postgresql_username: { Ref: postgresql_username }
+            $postgresql_password: { Ref: postgresql_password }
+            $wait_handle: { Ref: wait_handle }
+          - |
+            #!/bin/bash
+            yum -y install postgresql-server
+            su - postgres -c initdb
+
+            echo "listen_addresses = '*'" >>/var/lib/pgsql/data/postgresql.conf
+            cat >>/var/lib/pgsql/data/pg_hba.conf <<'EOF'
+            host all postgres 0.0.0.0/0 reject
+            host all all 0.0.0.0/0 md5
+            EOF
+
+            chkconfig postgresql on
+            service postgresql start
+
+            createuser -s -U postgres $postgresql_username
+            createdb -O $postgresql_username -U postgres $openshift_name
+            echo "ALTER USER $postgresql_username PASSWORD '$postgresql_password'" | psql -U postgres
+
+            cfn-signal '$wait_handle'
+
+  database_port:
+    Type: OS::Neutron::Port
+    Properties:
+      network_id: { Ref: private_network }
+      fixed_ips:
+        - subnet_id: { Ref: private_subnet }
+
+  database_ip:
+    Type: OS::Neutron::FloatingIP
+    Properties:
+      floating_network_id: { Ref: public_network }
+      port_id: { Ref: database_port }
+
+  # NB: WaitCondition stuff will be simplified in Icehouse
+
+  wait_handle:
+    Type: AWS::CloudFormation::WaitConditionHandle
+
+  wait_condition:
+    Type: AWS::CloudFormation::WaitCondition
+    DependsOn: database
+    Properties:
+      Handle: { Ref: wait_handle }
+      Timeout: 600
+
+  ticketmonster:
+    Type: OSE::OpenShift
+    DependsOn: wait_condition
+    Properties:
+      verify: False
+      name: { Ref: openshift_name }
+      domain: { Ref: openshift_domain }
+      cartridges: [ jbosseap-6 ]
+      initial_git_url: "https://github.com/jim-minter/ticket-monster.git"
+      environment_variables:
+        OPENSHIFT_POSTGRESQL_DB_HOST: { "Fn::GetAtt": [ database_ip, floating_ip_address ] }
+        OPENSHIFT_POSTGRESQL_DB_PORT: 5432
+        OPENSHIFT_POSTGRESQL_DB_USERNAME: { Ref: postgresql_username }
+        OPENSHIFT_POSTGRESQL_DB_PASSWORD: { Ref: postgresql_password }
+        OPENSHIFT_POSTGRESQL_DB_URL:
+          Fn::Replace:
+            - $postgresql_username: { Ref: postgresql_username }
+              $postgresql_password: { Ref: postgresql_password }
+              $floating_ip_address: { "Fn::GetAtt": [ database_ip, floating_ip_address ] }
+            - postgresql://$postgresql_username:$postgresql_password@$floating_ip_address:5432
+
+Outputs:
+  app_url:
+    Value: { "Fn::GetAtt": [ticketmonster, app_url] }
+    Description: Ticketmonster application URL
