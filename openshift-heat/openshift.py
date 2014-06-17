@@ -22,20 +22,21 @@ import auth
 
 class OpenShift(resource.Resource):
     properties_schema = {
-        "url": properties.Schema(properties.STRING, "url"),
-        "username": properties.Schema(properties.STRING, "username"),
-        "password": properties.Schema(properties.STRING, "password"),
-        "verify": properties.Schema(properties.BOOLEAN, "verify"),
-        "domain": properties.Schema(properties.STRING, "domain"),
-        "name": properties.Schema(properties.STRING, "name"),
-        "cartridges": properties.Schema(properties.LIST, "cartridges"),
-        "scale": properties.Schema(properties.BOOLEAN, "scale"),
-        "gear_size": properties.Schema(properties.STRING, "gear_size"),
-        "initial_git_url": properties.Schema(properties.STRING,
+        "url": properties.Schema(properties.Schema.STRING, "url"),
+        "username": properties.Schema(properties.Schema.STRING, "username"),
+        "password": properties.Schema(properties.Schema.STRING, "password"),
+        "verify": properties.Schema(properties.Schema.BOOLEAN, "verify"),
+        "domain": properties.Schema(properties.Schema.STRING, "domain"),
+        "name": properties.Schema(properties.Schema.STRING, "name"),
+        "cartridges": properties.Schema(properties.Schema.LIST, "cartridges"),
+        "scale": properties.Schema(properties.Schema.BOOLEAN, "scale"),
+        "gear_size": properties.Schema(properties.Schema.STRING, "gear_size"),
+        "initial_git_url": properties.Schema(properties.Schema.STRING,
                                              "initial_git_url"),
-        "environment_variables": properties.Schema(properties.MAP,
+        "environment_variables": properties.Schema(properties.Schema.MAP,
                                                    "environment_variables"),
-        "artifact_url": properties.Schema(properties.STRING, "artifact_url"),
+        "artifact_url": properties.Schema(properties.Schema.STRING,
+                                          "artifact_url"),
     }
 
     attributes_schema = {
@@ -43,8 +44,8 @@ class OpenShift(resource.Resource):
     }
 
     def _auth(self):
-        ks = self.keystone().client_v2
-        username = ks.tokens.authenticate(token = self.context.auth_token).user["username"]
+        ks = self.keystone().client
+        username = ks.get_raw_token_from_identity_service(ks.auth_url, token = self.context.auth_token)["user"]["name"]
 
         if cfg.CONF.plugin_openshift.auth_mechanism == "password":
             return auth.HTTPBasicAuth(self.properties["username"], self.properties["password"])
@@ -67,7 +68,7 @@ class OpenShift(resource.Resource):
         if self.properties["url"]:
             return self.properties["url"]
         else:
-            ks = self.keystone().client_v2
+            ks = self.keystone().client
             return ks.service_catalog.get_urls(service_type = "paas")[0]
 
     def physical_resource_name(self):
