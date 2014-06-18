@@ -1,0 +1,10 @@
+parameters:
+  # UUID for public network (find with neutron net-list)
+  public_net: 
+
+  # PostgreSQL IaaS instance
+  key_name: 
+
+resource_registry:
+  "Library::Server": library/server.yaml
+  "Library::Net": library/net.yaml

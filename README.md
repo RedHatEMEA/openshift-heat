@@ -234,29 +234,30 @@ The OSE::OpenShift resource provides the following attribute:
 Samples
 -------
 
-- *samples/simple_demo.yaml* creates a demo python application in
-  OpenShift, given that configuration step 1 has been followed.
+- *samples/havana/simple_demo.yaml* creates a demo python application
+  in OpenShift, given that configuration step 1 has been followed.
 
   Edit the url, username and password values in simple_demo.yaml
   before running the following command:
 
   `(keystone_demo)# heat stack-create -f simple_demo.yaml test_stack -P 'domain=$DOMAIN'`
 
-- *samples/simple_demo_integrated.yaml* creates a demo python
+- *samples/havana/simple_demo_integrated.yaml* creates a demo python
   application in OpenShift, given that configuration steps 1-3 have
   been followed.
 
   `(keystone_demo)# heat stack-create -f simple_demo_integrated.yaml test_stack -P 'domain=$DOMAIN'`
 
-- *samples/kitchensink_demo_integrated.yaml* creates a scaled JBoss
-  "kitchensink" demo application in OpenShift, given that
+- *samples/havana/kitchensink_demo_integrated.yaml* creates a scaled
+  JBoss "kitchensink" demo application in OpenShift, given that
   configuration steps 1-3 have been followed.
 
   `(keystone_demo)# heat stack-create -f kitchensink_demo_integrated.yaml test_stack -P 'domain=$DOMAIN'`
 
-- *samples/drupal.yaml* creates a two-tier application with MariaDB
-  running on Fedora on OpenStack IaaS and Drupal running in OpenShift
-  PaaS.  Again, configuration steps 1-3 need to have been followed.
+- *samples/havana/drupal.yaml* creates a two-tier application with
+  MariaDB running on Fedora on OpenStack IaaS and Drupal running in
+  OpenShift PaaS.  Again, configuration steps 1-3 need to have been
+  followed.
 
   Note that this example uses Heat WaitConditions; in OpenStack Havana
   a user with admin privilege is required to deploy this template.
@@ -266,10 +267,10 @@ Samples
 
   `(keystone_demo)# heat stack-create -f drupal.yaml -e drupal_environment.yaml test_stack`
 
-- *samples/ticketmonster.yaml* creates a two-tier application with
-  PostgreSQL running on OpenStack IaaS and Ticketmonster (JBoss EAP
-  application) running in OpenShift PaaS.  Again, configuration steps
-  1-3 need to have been followed.
+- *samples/havana/ticketmonster.yaml* creates a two-tier application
+  with PostgreSQL running on OpenStack IaaS and Ticketmonster (JBoss
+  EAP application) running in OpenShift PaaS.  Again, configuration
+  steps 1-3 need to have been followed.
 
   Note that this example uses Heat WaitConditions; in OpenStack Havana
   a user with admin privilege is required to deploy this template.
@@ -279,11 +280,11 @@ Samples
 
   `(keystone_demo)# heat stack-create -f ticketmonster.yaml -e ticketmonster_environment.yaml test_stack`
 
-- *samples/ticketmonster_net.yaml* creates a two-tier application with
-  PostgreSQL running on OpenStack IaaS and Ticketmonster (JBoss EAP
-  application) running in OpenShift PaaS, including a separate Neutron
-  network for the IaaS instance.  Again, configuration steps 1-3 need
-  to have been followed.
+- *samples/havana/ticketmonster_net.yaml* creates a two-tier
+  application with PostgreSQL running on OpenStack IaaS and
+  Ticketmonster (JBoss EAP application) running in OpenShift PaaS,
+  including a separate Neutron network for the IaaS instance.  Again,
+  configuration steps 1-3 need to have been followed.
 
   Note that this example uses Heat WaitConditions; in OpenStack Havana
   a user with admin privilege is required to deploy this template.
@@ -292,3 +293,19 @@ Samples
   ticketmonster_net_environment.yaml then run:
 
   `(keystone_demo)# heat stack-create -f ticketmonster_net.yaml -e ticketmonster_net_environment.yaml test_stack`
+
+- *samples/icehouse/ticketmonster.yaml* creates a two-tier
+  application with PostgreSQL running on OpenStack IaaS and
+  Ticketmonster (JBoss EAP application) running in OpenShift PaaS,
+  including a separate Neutron network for the IaaS instance.  Again,
+  configuration steps 1-3 need to have been followed.
+
+  Note that in Icehouse, admin privileges are no longer required to
+  deploy this template.  However, note that stack_user_domain,
+  stack_domain_admin and stack_domain_admin_password must be
+  configured in /etc/heat/heat.conf (this is not currently done
+  automatically, at least by packstack on RDO).
+
+  Complete all the missing parameters in environment.yaml then run:
+
+  `(keystone_demo)# heat stack-create -f ticketmonster.yaml -e environment.yaml test_stack`

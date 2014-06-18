@@ -1,0 +1,53 @@
+heat_template_version: 2013-05-23
+
+parameters:
+  key_name:
+    description: Keypair name for server access
+    type: string
+  public_net:
+    description: UUID of public network
+    type: string
+
+resources:
+  network:
+    type: Library::Net
+    properties:
+      public_net: { get_param: public_net }
+      cidr: 10.0.0.0/24
+      gateway_ip: 10.0.0.1
+      start: 10.0.0.2
+      end: 10.0.0.254
+
+  database:
+    type: Library::Server
+    properties:
+      image: Fedora-x86_64-20-20140407-sda-agent.qcow2
+      network: { get_attr: [ network, id ] }
+      public_net: { get_param: public_net }
+      key_name: { get_param: key_name }
+      config: { get_file: postgresql/install.sh }
+
+  ticketmonster:
+    type: OSE::OpenShift
+    properties:
+      verify: False
+      name: ticketmonster
+      domain: test
+      scale: True
+      cartridges: [ jbosseap-6 ]
+      artifact_url: "http://server/path/to/ticketmonster.tar.gz"
+      environment_variables:
+        OPENSHIFT_POSTGRESQL_DB_HOST: { get_attr: [ database, ip ] }
+        OPENSHIFT_POSTGRESQL_DB_PORT: 5432
+        OPENSHIFT_POSTGRESQL_DB_USERNAME: admin
+        OPENSHIFT_POSTGRESQL_DB_PASSWORD: password
+        OPENSHIFT_POSTGRESQL_DB_URL:
+          str_replace:
+            template: postgresql://admin:password@$ip:5432
+            params:
+              $ip: { get_attr: [ database, ip ] }
+
+outputs:
+  app_url:
+    value: { get_attr: [ticketmonster, app_url] }
+    description: Ticketmonster application URL
