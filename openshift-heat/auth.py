@@ -20,6 +20,7 @@ import os
 import requests
 import urlparse
 
+
 class HTTPBasicAuth(requests.auth.HTTPBasicAuth):
     pass
 
@@ -38,10 +39,10 @@ class HTTPGSSAPIAuthBase(requests.auth.AuthBase):
     def _authenticate(self, r, user_cred):
         svc_host = urlparse.urlparse(r.url).netloc
         svc_name = gssapi.gss_import_name("HTTP@" + svc_host,
-                                          gssapi.GSS_C_NT_HOSTBASED_SERVICE);
+                                          gssapi.GSS_C_NT_HOSTBASED_SERVICE)
 
         _, token = gssapi.gss_init_sec_context(user_cred, svc_name)
-        
+
         r.headers["Authorization"] = "Negotiate " + base64.b64encode(token)
         return r
 
@@ -56,10 +57,10 @@ class HTTPGSSAPIAuth(HTTPGSSAPIAuthBase):
         cred_store = [("client_keytab", self.keytab)]
         my_cred = gssapi.gss_acquire_cred_from(cred_store, gssapi._NULL)
 
-        user_name = gssapi.gss_import_name(self.user, gssapi.GSS_C_NT_USER_NAME)
-        user_cred = gssapi.gss_acquire_cred_impersonate_name(my_cred, user_name)
+        username = gssapi.gss_import_name(self.user, gssapi.GSS_C_NT_USER_NAME)
+        usercred = gssapi.gss_acquire_cred_impersonate_name(my_cred, username)
 
-        return self._authenticate(r, user_cred)
+        return self._authenticate(r, usercred)
 
 
 class HTTPGSSProxyAuth(HTTPGSSAPIAuthBase):
@@ -69,7 +70,7 @@ class HTTPGSSProxyAuth(HTTPGSSAPIAuthBase):
         self.user = user
 
     def __call__(self, r):
-        user_name = gssapi.gss_import_name(self.user, gssapi.GSS_C_NT_USER_NAME)
-        user_cred = gssapi.gss_acquire_cred(user_name)
+        username = gssapi.gss_import_name(self.user, gssapi.GSS_C_NT_USER_NAME)
+        usercred = gssapi.gss_acquire_cred(username)
 
-        return self._authenticate(r, user_cred)
+        return self._authenticate(r, usercred)

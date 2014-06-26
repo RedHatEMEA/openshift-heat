@@ -20,6 +20,7 @@ from heat.openstack.common import excutils
 from oslo.config import cfg
 import auth
 
+
 class OpenShift(resource.Resource):
     properties_schema = {
         "url": properties.Schema(properties.Schema.STRING, "url"),
@@ -45,14 +46,19 @@ class OpenShift(resource.Resource):
 
     def _auth(self):
         ks = self.keystone().client
-        username = ks.get_raw_token_from_identity_service(ks.auth_url, token = self.context.auth_token)["user"]["name"]
+        auth_token = self.context.auth_token
+        raw_token = ks.get_raw_token_from_identity_service(ks.auth_url,
+                                                           token=auth_token)
+        username = raw_token["user"]["name"]
 
         if cfg.CONF.plugin_openshift.auth_mechanism == "password":
-            return auth.HTTPBasicAuth(self.properties["username"], self.properties["password"])
+            return auth.HTTPBasicAuth(self.properties["username"],
+                                      self.properties["password"])
         elif cfg.CONF.plugin_openshift.auth_mechanism == "keystone":
             return auth.HTTPKeystoneAuth(self.context.auth_token)
         elif cfg.CONF.plugin_openshift.auth_mechanism == "gssapi":
-            return auth.HTTPGSSAPIAuth(cfg.CONF.plugin_openshift.keytab, username)
+            return auth.HTTPGSSAPIAuth(cfg.CONF.plugin_openshift.keytab,
+                                       username)
         elif cfg.CONF.plugin_openshift.auth_mechanism == "gssproxy":
             return auth.HTTPGSSProxyAuth(username)
         else:
@@ -69,7 +75,7 @@ class OpenShift(resource.Resource):
             return self.properties["url"]
         else:
             ks = self.keystone().client
-            return ks.service_catalog.get_urls(service_type = "paas")[0]
+            return ks.service_catalog.get_urls(service_type="paas")[0]
 
     def physical_resource_name(self):
         name = self.properties.get("name")
@@ -86,13 +92,17 @@ class OpenShift(resource.Resource):
                                                     "initial_git_url"]])
         d["name"] = self.physical_resource_name()
         if self.properties["environment_variables"]:
-            d["environment_variables"] = [{"name": x, "value": self.properties["environment_variables"][x]} for x in self.properties["environment_variables"]]
+            envvars = [{"name": x,
+                        "value": self.properties["environment_variables"][x]}
+                       for x in self.properties["environment_variables"]]
+            d["environment_variables"] = envvars
 
         id = api.application_create(self.properties["domain"], **d)
 
         if self.properties["artifact_url"]:
             try:
-                api.application_deploy(id, artifact_url = self.properties["artifact_url"])
+                artifact_url = self.properties["artifact_url"]
+                api.application_deploy(id, artifact_url=artifact_url)
             except:
                 with excutils.save_and_reraise_exception():
                     api.application_delete(id)
@@ -105,7 +115,7 @@ class OpenShift(resource.Resource):
             return
 
         api = API(self._url(), self._auth(), self.properties["verify"])
-                  
+
         api.application_delete(self.resource_id)
         return self.resource_id
 
@@ -117,10 +127,10 @@ def resource_mapping():
 config_group = cfg.OptGroup("plugin_openshift")
 config_opts = [
     cfg.StrOpt("auth_mechanism",
-               choices = ["password", "keystone", "gssapi", "gssproxy"],
-               default = "password"),
+               choices=["password", "keystone", "gssapi", "gssproxy"],
+               default="password"),
     cfg.StrOpt("keytab")
 ]
 
 cfg.CONF.register_group(config_group)
-cfg.CONF.register_opts(config_opts, group = config_group)
+cfg.CONF.register_opts(config_opts, group=config_group)

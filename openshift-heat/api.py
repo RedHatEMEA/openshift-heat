@@ -17,17 +17,18 @@
 import json
 import requests
 
+
 class API(object):
-    def __init__(self, url, auth, verify = True):
+    def __init__(self, url, auth, verify=True):
         self.s = requests.Session()
         self.url = url
         self.auth = auth
         self.verify = verify
 
-    def _call(self, method, url, data = None):
-        r = self.s.request(method, self.url + url, data = data,
-                           headers = { "Content-Type": "application/json" },
-                           auth = self.auth, verify = self.verify)
+    def _call(self, method, url, data=None):
+        r = self.s.request(method, self.url + url, data=data,
+                           headers={"Content-Type": "application/json"},
+                           auth=self.auth, verify=self.verify)
 
         if r.status_code / 100 != 2:
             raise Exception("Unexpected HTTP status code %u" % r.status_code)
@@ -37,7 +38,7 @@ class API(object):
     def application_create(self, domain, **kwargs):
         r = self._call("POST", "/domain/%s/applications" % domain,
                        json.dumps(kwargs))
-    
+
         return r["id"]
 
     def application_info(self, id):
@@ -49,4 +50,3 @@ class API(object):
     def application_deploy(self, id, **kwargs):
         return self._call("POST", "/application/%s/deployments" % id,
                           json.dumps(kwargs))
-    

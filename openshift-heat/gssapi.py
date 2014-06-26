@@ -21,7 +21,7 @@ try:
 except:
     pass
 
-### constants
+# constants
 
 GSS_C_BOTH = 0
 GSS_C_INITIATE = 1
@@ -35,7 +35,8 @@ GSS_C_NT_USER_NAME = "GSS_C_NT_USER_NAME"
 
 _NULL = ctypes.c_void_p(0)
 
-### types
+# types
+
 
 class gss_buffer_t(ctypes.Structure):
     # Notice: any given gss_buffer_t instance must be used either as an input
@@ -48,21 +49,22 @@ class gss_buffer_t(ctypes.Structure):
     #
     # If a gss_buffer_t instance is not initialised with a value, it must be
     # used only to receive a return value from GSSAPI.  GSSAPI will allocate
-    # the memory used by the buffer; upon deletion of the gss_buffer_t instance,
-    # gss_release_buffer() will be called so that GSSAPI can deallocate the
-    # memory it allocated.
+    # the memory used by the buffer; upon deletion of the gss_buffer_t
+    # instance, gss_release_buffer() will be called so that GSSAPI can
+    # deallocate the memory it allocated.
 
     _fields_ = [("length", ctypes.c_size_t),
                 ("value", ctypes.c_void_p)]
 
-    def __init__(self, s = None):
+    def __init__(self, s=None):
         super(gss_buffer_t, self).__init__()
 
         self.output = s is None
 
         if s:
             self.s = s  # keep a reference to s, because cast doesn't
-            if isinstance(self.s, unicode): self.s = s.encode("utf-8")
+            if isinstance(self.s, unicode):
+                self.s = s.encode("utf-8")
             self.length = len(self.s)
             self.value = ctypes.cast(self.s, ctypes.c_void_p)
 
@@ -73,9 +75,11 @@ class gss_buffer_t(ctypes.Structure):
     def __str__(self):
         return ctypes.string_at(self.value, self.length)
 
+
 class gss_key_value_element_struct(ctypes.Structure):
     _fields_ = [("key", ctypes.c_char_p),
                 ("value", ctypes.c_char_p)]
+
 
 class gss_key_value_set_struct(ctypes.Structure):
     _fields_ = [("count", ctypes.c_uint32),
@@ -83,15 +87,18 @@ class gss_key_value_set_struct(ctypes.Structure):
 
 # wrappers for GSSAPI opaque types, adding automatic deletion, follow.
 
+
 class gss_name_t(ctypes.c_void_p):
     def __del__(self):
         if self:
             _gss_release_name(self)
 
+
 class gss_cred_id_t(ctypes.c_void_p):
     def __del__(self):
         if self:
             _gss_release_cred(self)
+
 
 class gss_ctx_id_t(ctypes.c_void_p):
     def __del__(self):
@@ -100,41 +107,46 @@ class gss_ctx_id_t(ctypes.c_void_p):
 
 # GSSAPIException is thrown whenever an error is returned from GSSAPI.
 
+
 class GSSAPIException(Exception):
     def __init__(self, status, minor_status):
         super(GSSAPIException, self).__init__()
         (self.status, self.minor_status) = (status, minor_status)
         self.value = "\n%s\n%s" % (gss_display_status(status, GSS_C_GSS_CODE),
-                                   gss_display_status(minor_status, GSS_C_MECH_CODE))
+                                   gss_display_status(minor_status,
+                                                      GSS_C_MECH_CODE))
 
     def __str__(self):
         return self.value
 
-### functions
+# functions
+
 
 def gss_display_status(status, type):
     minor_status = ctypes.c_uint32()
-    message_context = ctypes.c_uint32() # TODO: use message_context as designed
+    message_context = ctypes.c_uint32()  # TODO use message_context as designed
     status_string = gss_buffer_t()
-    
+
     gssapi.gss_display_status(ctypes.byref(minor_status),
                               status,
                               ctypes.c_int(type),
                               _NULL,
                               ctypes.byref(message_context),
                               ctypes.byref(status_string))
-    
+
     return str(status_string)
+
 
 def _gss_release_buffer(buf):
     # Library end-users should not need to call this function.
     minor_status = ctypes.c_uint32()
 
-    status = gssapi.gss_release_buffer(ctypes.byref(minor_status), 
+    status = gssapi.gss_release_buffer(ctypes.byref(minor_status),
                                        ctypes.byref(buf))
 
     if status or minor_status:
         raise GSSAPIException(status, minor_status)
+
 
 def gss_import_name(name, type):
     minor_status = ctypes.c_uint32()
@@ -151,6 +163,7 @@ def gss_import_name(name, type):
 
     return output_name
 
+
 def _gss_release_name(name):
     # Library end-users should not need to call this function.
     minor_status = ctypes.c_uint32()
@@ -159,6 +172,7 @@ def _gss_release_name(name):
 
     if status or minor_status:
         raise GSSAPIException(status, minor_status)
+
 
 def gss_acquire_cred(name):
     minor_status = ctypes.c_uint32()
@@ -178,10 +192,12 @@ def gss_acquire_cred(name):
 
     return output_cred_handle
 
+
 def gss_acquire_cred_from(store, name):
     minor_status = ctypes.c_uint32()
     cred_store = gss_key_value_set_struct(len(store),
-                                          (gss_key_value_element_struct * len(store))(*store))
+                                          (gss_key_value_element_struct *
+                                           len(store))(*store))
 
     output_cred_handle = gss_cred_id_t()
 
@@ -200,24 +216,27 @@ def gss_acquire_cred_from(store, name):
 
     return output_cred_handle
 
+
 def gss_acquire_cred_impersonate_name(cred, name):
     minor_status = ctypes.c_uint32()
     output_cred_handle = gss_cred_id_t()
 
-    status = gssapi.gss_acquire_cred_impersonate_name(ctypes.byref(minor_status),
-                                                      cred,
-                                                      name,
-                                                      ctypes.c_uint32(0),
-                                                      _NULL,
-                                                      ctypes.c_int(GSS_C_INITIATE),
-                                                      ctypes.byref(output_cred_handle),
-                                                      _NULL,
-                                                      _NULL)
+    status = gssapi.gss_acquire_cred_impersonate_name(
+        ctypes.byref(minor_status),
+        cred,
+        name,
+        ctypes.c_uint32(0),
+        _NULL,
+        ctypes.c_int(GSS_C_INITIATE),
+        ctypes.byref(output_cred_handle),
+        _NULL,
+        _NULL)
 
     if status or minor_status:
         raise GSSAPIException(status, minor_status)
 
     return output_cred_handle
+
 
 def _gss_release_cred(cred):
     # Library end-users should not need to call this function.
@@ -227,6 +246,7 @@ def _gss_release_cred(cred):
 
     if status or minor_status:
         raise GSSAPIException(status, minor_status)
+
 
 def gss_init_sec_context(cred, name):
     minor_status = ctypes.c_uint32()
@@ -251,6 +271,7 @@ def gss_init_sec_context(cred, name):
         raise GSSAPIException(status, minor_status)
 
     return (context_handle, str(token))
+
 
 def _gss_delete_sec_context(context):
     # Library end-users should not need to call this function.
